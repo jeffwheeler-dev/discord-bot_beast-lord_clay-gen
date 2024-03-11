@@ -1,4 +1,5 @@
 require('dotenv').config();
+require('./database');
 const { Client, GatewayIntentBits } = require('discord.js');
 
 // Create a new client instance with necessary intents
@@ -26,4 +27,5 @@ client.on('messageCreate', message => {
 });
 
 // Login to Discord with your app's token
+console.log('MongoDB URI:', process.env.MONGODB_URI);
 client.login(process.env.DISCORD_TOKEN);
