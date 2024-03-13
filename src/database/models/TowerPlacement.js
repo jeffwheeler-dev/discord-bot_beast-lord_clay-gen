@@ -1,29 +1,24 @@
 // src/database/models/TowerPlacement.js
+
 const mongoose = require('mongoose');
 
-const Schema = mongoose.Schema;
-
-const TowerPlacementSchema = new Schema({
-  towerType: {
-    type: String,
+const towerPlacementSchema = new mongoose.Schema({
+  channelId: { 
+    type: String, 
+    required: true 
+  }, // The Discord channel ID associated with the alliance making the tower placement
+  towerType: { 
+    type: String, 
     required: true,
-    enum: ['home', 'away'], // Specify that tower type can only be 'home' or 'away'
+    enum: ['home', 'away'] // Assuming two types of towers: home and away
   },
-  claySpent: {
-    type: Number,
-    required: true,
+  placedAt: { 
+    type: Date, 
+    default: Date.now // The date and time when the tower was placed
   },
-  placedBy: {
-    type: String,
-    required: true,
-  },
-  createdAt: {
-    type: Date,
-    default: Date.now, // Automatically set to the current date and time when a new document is created
-  }
+  // You can add more fields relevant to tower placement, such as cost, location coordinates, etc.
 });
 
-// Create a model from the schema
-const TowerPlacement = mongoose.model('TowerPlacement', TowerPlacementSchema);
+const TowerPlacement = mongoose.model('TowerPlacement', towerPlacementSchema);
 
 module.exports = TowerPlacement;

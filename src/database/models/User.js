@@ -1,30 +1,14 @@
-// src/database/models/User.js
+// src/database/models/Alliance.js
+
 const mongoose = require('mongoose');
 
-const Schema = mongoose.Schema;
-
-const UserSchema = new Schema({
-  discordId: {
-    type: String,
-    required: true,
-    unique: true, // Ensure Discord IDs are unique in the database
-  },
-  username: {
-    type: String,
-    required: true,
-  },
-  roles: [{
-    type: String, // Could be role IDs or names, depending on how you want to manage them
-    required: false, // Not all users may have roles initially
-  }],
-  createdAt: {
-    type: Date,
-    default: Date.now, // Automatically set when a new user document is created
-  },
-  // Add additional fields as needed for your application
+const allianceSchema = new mongoose.Schema({
+  channelId: { type: String, required: true, unique: true, index: true }, // Represents the Discord channel tied to the alliance
+  allianceName: { type: String, required: true }, // Optional: A name for the alliance
+  balance: { type: Number, required: true, default: 0 }, // If you want to track alliance balance directly within this model
+  // Add other fields relevant to alliances, such as members (could be an array of userIds), achievements, etc.
 });
 
-// Create a model from the schema
-const User = mongoose.model('User', UserSchema);
+const Alliance = mongoose.model('Alliance', allianceSchema);
 
-module.exports = User;
+module.exports = Alliance;

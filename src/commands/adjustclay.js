@@ -1,40 +1,43 @@
-// src/commands/adjustClay.js
-const ClayBalance = require('../database/models/ClayBalance'); // Adjust the path as necessary
-const { hasModPermissions } = require('../utils/checkPermissions'); // Ensure this utility is implemented to check permissions
+const ClayBalance = require('../database/models/ClayBalance');
+const { hasModPermissions } = require('../utils/permissionsUtil');
 
 module.exports = {
     name: 'adjustclay',
-    description: 'Adjusts the clay balance by a specified amount. Usage: !adjustclay [amount]',
+    description: 'Adjusts the clay balance for this channel.',
     async execute(message, args) {
-        // Check if the user has the required permissions
-        if (!(await hasModPermissions(message))) {
-            return message.reply('You do not have permission to use this command.');
+        // Use hasModPermissions to check if the user has the right to adjust the clay balance
+        const canAdjust = await hasModPermissions(message);
+        if (!canAdjust) {
+            return message.reply('You do not have permission to adjust the clay balance.');
         }
 
-        // Validate the input
-        if (args.length !== 1 || isNaN(args[0])) {
-            return message.reply('Please provide a valid number to adjust the clay balance by.');
+        // Check for the presence of an adjustment amount argument
+        if (args.length !== 1 || isNaN(parseInt(args[0], 10))) {
+            return message.reply('Please specify a valid number to adjust the clay balance by.');
         }
 
-        const adjustAmount = parseInt(args[0], 10);
+        const adjustment = parseInt(args[0], 10);
+        const channelId = message.channel.id;
 
         try {
-            // Retrieve the current clay balance document
-            let clayBalance = await ClayBalance.findOne({});
+            let clayBalance = await ClayBalance.findOne({ channelId: channelId });
+
+            // If no balance exists for this channel, initialize it with the adjustment amount
             if (!clayBalance) {
-                // If no clay balance exists, initialize it
-                clayBalance = new ClayBalance({ balance: 0 });
+                clayBalance = new ClayBalance({
+                    channelId,
+                    balance: adjustment
+                });
+            } else {
+                // Adjust the existing balance
+                clayBalance.balance += adjustment;
             }
 
-            // Adjust the clay balance
-            clayBalance.balance += adjustAmount;
             await clayBalance.save();
-
-            // Provide feedback to the user
-            message.reply(`The clay balance has been adjusted by ${adjustAmount}. The new balance is ${clayBalance.balance}.`);
+            message.reply(`The clay balance has been successfully adjusted by ${adjustment}. New balance: ${clayBalance.balance} clay.`);
         } catch (error) {
             console.error('Failed to adjust clay balance:', error);
-            message.reply('There was an error adjusting the clay balance.');
+            message.reply('An error occurred while trying to adjust the clay balance.');
         }
     },
 };
