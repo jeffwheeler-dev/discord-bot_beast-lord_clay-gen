@@ -1,41 +1,53 @@
 const ClayBalance = require('../database/models/ClayBalance');
-const { hasModPermissions } = require('../utils/permissionsUtil');
+const Alliance = require('../database/models/Alliance');
+const Tower = require('../database/models/Tower');
+const { hasModPermissions } = require('../utils/permissionsUtil'); // Ensure this utility function suits your setup
 
 module.exports = {
     name: 'placetower',
-    description: 'Places a tower in the specified territory, costing clay.',
+    description: 'Places a tower in a specified location for your alliance, ensuring no duplicate locations.',
     async execute(message, args) {
-        // Ensure the command includes the type of tower placement
-        if (!args.length || (args[0].toLowerCase() !== 'home' && args[0].toLowerCase() !== 'away')) {
-            return message.reply('Please specify where to place the tower: home or away.');
+        if (args.length < 2) {
+            return message.reply('Usage: `!placetower [home/away] [location]`. Example: `!placetower home 100,100`');
         }
 
-        const hasPermission = await hasModPermissions(message);
-        if (!hasPermission) {
+        if (!await hasModPermissions(message)) {
             return message.reply("You don't have permission to place a tower.");
         }
 
-        const towerType = args[0].toLowerCase();
-        const cost = towerType === 'home' ? 2000 : 4000; // Example costs for home and away towers
+        const [towerType, ...locationParts] = args;
+        const location = locationParts.join(' ');
+        const cost = towerType.toLowerCase() === 'home' ? 2000 : 4000; // Adjust costs as necessary
 
-        console.log(`Attempting to place a ${towerType} tower for channel: ${message.channel.id}`);
+        // Check if the location is already taken
+        const existingTower = await Tower.findOne({ location: location });
+        if (existingTower) {
+            return message.reply(`A tower has already been placed at "${location}". Please choose a different location.`);
+        }
+
+        const alliance = await Alliance.findOne({ channelId: message.channel.id });
+        if (!alliance) {
+            return message.reply("This channel is not registered as an alliance.");
+        }
 
         let clayBalance = await ClayBalance.findOne({ channelId: message.channel.id });
-        console.log('Fetched clay balance:', clayBalance);
-
-        if (!clayBalance) {
-            console.log(`No clay balance found for channel: ${message.channel.id}. Initializing with 0 clay.`);
-            return message.reply("This channel doesn't have any clay to place a tower.");
+        if (!clayBalance || clayBalance.balance < cost) {
+            return message.reply(`Insufficient clay to place a ${towerType} tower. You need at least ${cost} clay.`);
         }
 
-        if (clayBalance.balance < cost) {
-            return message.reply(`Insufficient clay to place a ${towerType} tower. You need at least ${cost} clay. Current balance: ${clayBalance.balance}`);
-        }
-
+        // Deduct the clay cost and update the balance
         clayBalance.balance -= cost;
         await clayBalance.save();
 
-        console.log(`Successfully placed a ${towerType} tower for channel: ${message.channel.id}. New balance: ${clayBalance.balance}`);
-        message.reply(`A ${towerType} tower has been successfully placed! New clay balance: ${clayBalance.balance}`);
+        // Place the tower
+        const newTower = new Tower({
+            channelId: message.channel.id,
+            allianceName: alliance.allianceName,
+            isActive: true,
+            location: location,
+        });
+        await newTower.save();
+
+        message.reply(`A ${towerType} tower has been successfully placed at "${location}" by the ${alliance.allianceName} alliance. Remaining balance: ${clayBalance.balance} clay.`);
     },
 };
