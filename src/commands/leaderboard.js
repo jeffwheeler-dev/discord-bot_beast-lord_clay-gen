@@ -1,11 +1,13 @@
 const { EmbedBuilder } = require('discord.js');
 const ClayBalance = require('../database/models/ClayBalance');
+const Alliance = require('../database/models/Alliance');
 
 module.exports = {
     name: 'leaderboard',
-    description: 'Displays a leaderboard of clay balances across all channels on the server.',
+    description: 'Displays a leaderboard of clay balances across all alliances on the server.',
     async execute(message) {
         try {
+            // Fetch all clay balances, sorted by balance in descending order
             const balances = await ClayBalance.find({}).sort({ balance: -1 }).limit(10);
 
             if (balances.length === 0) {
@@ -14,16 +16,17 @@ module.exports = {
 
             const leaderboardEmbed = new EmbedBuilder()
                 .setTitle('Clay Balance Leaderboard')
-                .setDescription('Top clay balances across all channels:')
+                .setDescription('Top clay balances across all alliances:')
                 .setColor(0x00AE86);
 
-            for (let balance of balances) {
-                // Attempt to fetch each channel by its ID and log the result
-                const channel = await message.guild.channels.fetch(balance.channelId).catch(console.error);
-                console.log(`Fetching channel: ${balance.channelId}, Found:`, channel);
-
+            for (const balance of balances) {
+                // Attempt to fetch the alliance name for each balance
+                const alliance = await Alliance.findOne({ channelId: balance.channelId });
+                const allianceName = alliance ? alliance.allianceName : 'Unknown Alliance';
+                const channel = await message.guild.channels.fetch(balance.channelId).catch(() => null);
                 const channelName = channel ? channel.name : 'Unknown or Inaccessible Channel';
-                leaderboardEmbed.addFields({ name: `${channelName}`, value: `${balance.balance} clay`, inline: false });
+                
+                leaderboardEmbed.addFields({ name: `${allianceName} - ${channelName}`, value: `${balance.balance} clay`, inline: false });
             }
 
             message.channel.send({ embeds: [leaderboardEmbed] });
@@ -33,3 +36,4 @@ module.exports = {
         }
     },
 };
+         

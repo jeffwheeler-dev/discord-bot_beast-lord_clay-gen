@@ -1,10 +1,13 @@
-// src/utils/permissionsUtil.js
-const Setting = require('../database/models/Setting');
-
-const hasModPermissions = async (message) => {
-    const serverSettings = await Setting.findOne({ serverID: message.guild.id });
-    if (!serverSettings || !serverSettings.modRoleID) return false;
-    return message.member.roles.cache.has(serverSettings.modRoleID) || message.member.permissions.has('ADMINISTRATOR');
+const hasAdminPermissions = (message) => {
+    // Checks if the message author has the 'ADMINISTRATOR' permission
+    return message.member.permissions.has('ADMINISTRATOR');
 };
 
-module.exports = { hasModPermissions };
+const hasModPermissions = (message) => {
+    // Placeholder for moderator permission checks.
+    // Implement your logic here, for example:
+    // return message.member.permissions.has('MANAGE_CHANNELS') || hasAdminPermissions(message);
+    return message.member.roles.cache.some(role => role.name === "Moderator") || hasAdminPermissions(message);
+};
+
+module.exports = { hasAdminPermissions, hasModPermissions };
