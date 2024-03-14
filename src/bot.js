@@ -1,8 +1,8 @@
-// bot.js
 require('dotenv').config();
 require('./database');
 const fs = require('fs');
 const { Client, GatewayIntentBits, Collection } = require('discord.js');
+const Server = require('./models/Server'); // Adjust the path to your Server model
 const client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
@@ -15,7 +15,7 @@ client.commands = new Collection();
 const commandFiles = fs.readdirSync('./src/commands').filter(file => file.endsWith('.js'));
 
 for (const file of commandFiles) {
-    const command = require(`./commands/${file}`); // Make sure this path is correct
+    const command = require(`./commands/${file}`); // Ensure this path is correctly pointing to your commands folder
     client.commands.set(command.name, command);
 }
 
@@ -34,11 +34,24 @@ client.on('messageCreate', message => {
     const command = client.commands.get(commandName);
 
     try {
-        // Now correctly passing the client to the command's execute function
         command.execute(message, args, client);
     } catch (error) {
         console.error(error);
         message.reply('There was an error trying to execute that command!');
+    }
+});
+
+// Listen for when the bot joins a new guild
+client.on('guildCreate', async guild => {
+    try {
+        await Server.create({
+            serverId: guild.id,
+            serverName: guild.name,
+            // Additional fields can be added here based on your Server schema
+        });
+        console.log(`Joined and saved new server: ${guild.name}`);
+    } catch (error) {
+        console.error('Error saving new server info:', error);
     }
 });
 
