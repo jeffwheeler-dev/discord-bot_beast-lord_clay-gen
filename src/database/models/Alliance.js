@@ -5,6 +5,8 @@ const mongoose = require('mongoose');
 const allianceSchema = new mongoose.Schema({
   channelId: { type: String, required: true, unique: true, index: true }, // Represents the Discord channel tied to the alliance
   allianceName: { type: String, required: true }, // Optional: A name for the alliance
+  notificationsEnabled: { type: Boolean, default: true },
+  
 });
 
 const Alliance = mongoose.model('Alliance', allianceSchema);

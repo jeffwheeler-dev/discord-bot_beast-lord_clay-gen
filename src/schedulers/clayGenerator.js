@@ -1,7 +1,8 @@
 const cron = require('node-cron');
 const ClayBalance = require('../database/models/ClayBalance');
-const Alliance = require('../database/models/Alliance'); // Import the Alliance model
-const { client } = require('../bot'); // Ensure correct import of your Discord client instance
+const Alliance = require('../database/models/Alliance');
+const { sendNotification } = require('./notifications');
+const { client } = require('../bot'); // Correctly import the client instance
 
 const CLAY_ADDED_PER_INTERVAL = 375;
 const DAILY_CLAY_CAPACITY = 36000;
@@ -21,17 +22,18 @@ async function addClayToAllChannels() {
 
         try {
             await balance.save();
-            // Fetch the corresponding alliance name using channelId
+            // Fetch the corresponding alliance to check for notification preferences
             const alliance = await Alliance.findOne({ channelId: balance.channelId });
-            if (alliance) {
-                console.log(`Added ${allowedAddition} clay to ${alliance.allianceName}. New balance: ${balance.balance}`);
-                const discordChannel = await client.channels.fetch(balance.channelId);
-                discordChannel.send(`+${allowedAddition} clay added to ${alliance.allianceName}. New balance: ${balance.balance}`);
+            if (alliance && alliance.notificationsEnabled) { // Check if notifications are enabled for this alliance
+                const notificationMessage = `+${allowedAddition} clay added to ${alliance.allianceName}. New balance: ${balance.balance}.`;
+                console.log(notificationMessage);
+                // Now passing client as a parameter to sendNotification
+                sendNotification(client, balance.channelId, notificationMessage);
             } else {
-                console.log(`No alliance found for channelId: ${balance.channelId}. Clay added without Discord notification.`);
+                console.log(`Notifications are disabled or no alliance found for channelId: ${balance.channelId}.`);
             }
         } catch (error) {
-            console.error(`Error updating clay balance for channelId: ${balance.channelId}`, error);
+            console.error(`Error updating clay balance for channelId: ${balance.channelId}:`, error);
         }
     }
 }
@@ -43,4 +45,3 @@ cron.schedule('0,15,30,45 * * * *', addClayToAllChannels, {
 });
 
 module.exports = addClayToAllChannels;
-
