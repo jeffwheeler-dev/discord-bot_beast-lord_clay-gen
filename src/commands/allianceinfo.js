@@ -1,3 +1,5 @@
+// Active towers remain at zero
+
 const Alliance = require('../database/models/Alliance');
 const ClayBalance = require('../database/models/ClayBalance');
 const Tower = require('../database/models/Tower');

@@ -1,12 +1,8 @@
-// Import required packages and modules
 require('dotenv').config();
-require('./database'); // Ensures database connection
 const fs = require('fs');
+const mongoose = require('mongoose');
 const { Client, GatewayIntentBits, Collection } = require('discord.js');
-
-// Import schedulers
-const generateClay = require('./schedulers/clayGenerator');
-const resetDailyClayCapacity = require('./schedulers/resetClayCapacity');
+const Server = require('./database/models/Server');
 
 // Initialize Discord client
 const client = new Client({
@@ -14,10 +10,9 @@ const client = new Client({
         GatewayIntentBits.Guilds,
         GatewayIntentBits.GuildMessages,
         GatewayIntentBits.MessageContent,
-    ],
+    ]
 });
 
-// Prepare command handling
 client.commands = new Collection();
 const commandFiles = fs.readdirSync('./src/commands').filter(file => file.endsWith('.js'));
 
@@ -26,19 +21,40 @@ for (const file of commandFiles) {
     client.commands.set(command.name, command);
 }
 
-// Event: Bot ready
+async function startBot() {
+    try {
+        await mongoose.connect(process.env.MONGODB_URI);
+        console.log('MongoDB connected successfully.');
+
+        // Perform server checks or other startup operations here
+        for (const guild of client.guilds.cache.values()) {
+            try {
+                const existingServer = await Server.findOne({ serverId: guild.id });
+                if (!existingServer) {
+                    console.log(`Server not yet found in database. Added: ${guild.name}`);
+                    await Server.create({
+                        serverId: guild.id,
+                        serverName: guild.name
+                    });
+                    console.log(`New server added: ${guild.name}`);
+                } else {
+                    console.log(`Server connected: ${guild.name}`);
+                }
+            } catch (error) {
+                console.error(`Error checking/adding server ${guild.name} (ID: ${guild.id}):`, error);
+            }
+        }
+    } catch (error) {
+        console.error('MongoDB connection error:', error);
+    }
+}
+
 client.once('ready', () => {
     console.log('Bot is ready!');
-
-    // Start schedulers
-    generateClay();
-    resetDailyClayCapacity();
-
-    // Additional startup logic can be added here
+    startBot();
 });
 
-// Event: Message creation
-client.on('messageCreate', message => {
+client.on('messageCreate', async message => {
     if (!message.content.startsWith('!') || message.author.bot) return;
 
     const args = message.content.slice(1).trim().split(/ +/);
@@ -49,12 +65,24 @@ client.on('messageCreate', message => {
     const command = client.commands.get(commandName);
 
     try {
-        command.execute(message, args, client);
+        await command.execute(message, args);
     } catch (error) {
         console.error(error);
         message.reply('There was an error trying to execute that command!');
     }
 });
 
-// Log in to Discord with your app's token
+client.on('guildCreate', async guild => {
+    try {
+        console.log(`Bot joined a new server: ${guild.name}`);
+        await Server.create({
+            serverId: guild.id,
+            serverName: guild.name
+        });
+        console.log(`Joined and saved new server: ${guild.name}`);
+    } catch (error) {
+        console.error(`Error saving new server ${guild.name}:`, error);
+    }
+});
+
 client.login(process.env.DISCORD_TOKEN);

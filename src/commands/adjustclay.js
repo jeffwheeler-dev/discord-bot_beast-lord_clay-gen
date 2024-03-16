@@ -1,12 +1,12 @@
 const ClayBalance = require('../database/models/ClayBalance');
-const { hasModPermissions } = require('../utils/permissionsUtil');
+const { hasAdminPermissions } = require('../utils/permissionsUtil');
 
 module.exports = {
     name: 'adjustclay',
     description: 'Adjusts the clay balance for this channel.',
     async execute(message, args) {
-        // Use hasModPermissions to check if the user has the right to adjust the clay balance
-        const canAdjust = await hasModPermissions(message);
+        // Use hasAdminPermissions to check if the user has the right to adjust the clay balance
+        const canAdjust = await hasAdminPermissions(message);
         if (!canAdjust) {
             return message.reply('You do not have permission to adjust the clay balance.');
         }

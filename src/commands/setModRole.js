@@ -1,4 +1,5 @@
 // src/commands/setModRole.js
+const { Permissions } = require('discord.js');
 const Setting = require('../database/models/Setting'); // Adjust the path as necessary
 
 module.exports = {
@@ -8,6 +9,8 @@ module.exports = {
         if (!message.member.permissions.has('ADMINISTRATOR')) {
             return message.reply('You need administrator permissions to set the moderator role.');
         }
+        
+        
 
         const roleMention = message.mentions.roles.first();
         if (!roleMention) {
