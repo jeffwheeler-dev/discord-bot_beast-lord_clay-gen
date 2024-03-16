@@ -1,16 +1,14 @@
 // src/commands/setModRole.js
-const { Permissions } = require('discord.js');
-const Setting = require('../database/models/Setting'); // Adjust the path as necessary
+const { PermissionsBitField } = require('discord.js');
+const Setting = require('../database/models/Setting');
 
 module.exports = {
     name: 'setmodrole',
     description: 'Sets the moderator role for admin commands.',
-    async execute(message, args) {
-        if (!message.member.permissions.has('ADMINISTRATOR')) {
+    async execute(message) {
+        if (!message.member.permissions.has(PermissionsBitField.Flags.ADMINISTRATOR)) {
             return message.reply('You need administrator permissions to set the moderator role.');
         }
-        
-        
 
         const roleMention = message.mentions.roles.first();
         if (!roleMention) {
@@ -21,8 +19,8 @@ module.exports = {
             const serverID = message.guild.id;
             const modRoleID = roleMention.id;
 
-            // Update or create the setting
-            const setting = await Setting.findOneAndUpdate(
+            // Update or create the setting for the server, focusing on modRoleID only
+            await Setting.findOneAndUpdate(
                 { serverID: serverID },
                 { $set: { modRoleID: modRoleID } },
                 { new: true, upsert: true }

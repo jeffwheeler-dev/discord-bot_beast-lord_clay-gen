@@ -1,29 +1,22 @@
+// src/commands/placetower.js
 const ClayBalance = require('../database/models/ClayBalance');
 const Alliance = require('../database/models/Alliance');
 const Tower = require('../database/models/Tower');
-const { hasModPermissions } = require('../utils/permissionsUtil'); // Ensure this utility function suits your setup
-
+const { hasModPermissions } = require('../utils/permissionsUtil')
 module.exports = {
     name: 'placetower',
-    description: 'Places a tower in a specified location for your alliance, ensuring no duplicate locations.',
+    description: 'Places a tower for your alliance, either at home or away, without specifying a location.',
     async execute(message, args) {
-        if (args.length < 2) {
-            return message.reply('Usage: `!placetower [home/away] [location]`. Example: `!placetower home 100,100`');
+        if (args.length < 1) {
+            return message.reply('Usage: `!placetower [home/away]`. Example: `!placetower home`');
         }
 
         if (!await hasModPermissions(message)) {
             return message.reply("You don't have permission to place a tower.");
         }
 
-        const [towerType, ...locationParts] = args;
-        const location = locationParts.join(' ');
-        const cost = towerType.toLowerCase() === 'home' ? 2000 : 4000; // Adjust costs as necessary
-
-        // Check if the location is already taken
-        const existingTower = await Tower.findOne({ location: location });
-        if (existingTower) {
-            return message.reply(`A tower has already been placed at "${location}". Please choose a different location.`);
-        }
+        const towerType = args[0].toLowerCase();
+        const cost = towerType === 'home' ? 2000 : 4000; // Adjust costs as necessary
 
         const alliance = await Alliance.findOne({ channelId: message.channel.id });
         if (!alliance) {
@@ -39,15 +32,10 @@ module.exports = {
         clayBalance.balance -= cost;
         await clayBalance.save();
 
-        // Place the tower
-        const newTower = new Tower({
-            channelId: message.channel.id,
-            allianceName: alliance.allianceName,
-            isActive: true,
-            location: location,
-        });
-        await newTower.save();
+        // Update the tower count
+        const towerUpdate = towerType === 'home' ? { $inc: { homeTowerCount: 1 } } : { $inc: { awayTowerCount: 1 } };
+        await Tower.findOneAndUpdate({ allianceId: alliance._id }, towerUpdate, { upsert: true, new: true });
 
-        message.reply(`A ${towerType} tower has been successfully placed at "${location}" by the ${alliance.allianceName} alliance. Remaining balance: ${clayBalance.balance} clay.`);
+        message.reply(`A ${towerType} tower has been successfully placed by the ${alliance.allianceName} alliance. Remaining balance: ${clayBalance.balance} clay.`);
     },
 };

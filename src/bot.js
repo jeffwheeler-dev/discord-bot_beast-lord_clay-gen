@@ -23,22 +23,26 @@ for (const file of commandFiles) {
 
 async function startBot() {
     try {
-        await mongoose.connect(process.env.MONGODB_URI);
+        await mongoose.connect(process.env.MONGODB_URI, {
+            useNewUrlParser: true, 
+            useUnifiedTopology: true
+        });
         console.log('MongoDB connected successfully.');
 
         // Perform server checks or other startup operations here
         for (const guild of client.guilds.cache.values()) {
             try {
+                console.log(`Checking server: ${guild.name} (ID: ${guild.id})`);
                 const existingServer = await Server.findOne({ serverId: guild.id });
                 if (!existingServer) {
-                    console.log(`Server not yet found in database. Added: ${guild.name}`);
+                    console.log(`Server not found in DB, adding: ${guild.name}`);
                     await Server.create({
                         serverId: guild.id,
                         serverName: guild.name
                     });
                     console.log(`New server added: ${guild.name}`);
                 } else {
-                    console.log(`Server connected: ${guild.name}`);
+                    console.log(`Server already registered: ${guild.name}`);
                 }
             } catch (error) {
                 console.error(`Error checking/adding server ${guild.name} (ID: ${guild.id}):`, error);

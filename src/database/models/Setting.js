@@ -11,11 +11,6 @@ const settingSchema = new mongoose.Schema({
   modRoleID: {
     type: String,
     required: false, // Optional, as not all servers might designate a mod role
-  },
-  channelID: {
-    type: String, 
-    required: true,
-    unique: true // Ensures one primary channel per server's settings
   }
 });
 

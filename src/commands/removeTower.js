@@ -1,40 +1,49 @@
-const Tower = require('../database/models/Tower');
+// src/commands/removeTower.js
 const ClayBalance = require('../database/models/ClayBalance');
+const Alliance = require('../database/models/Alliance'); // Add this line to import the Alliance model
+const Tower = require('../database/models/Tower');
 const { hasModPermissions } = require('../utils/permissionsUtil');
 
 module.exports = {
     name: 'removetower',
-    description: 'Removes a tower from a specified location.',
+    description: 'Removes a tower and updates the clay balance.',
     async execute(message, args) {
         if (!await hasModPermissions(message)) {
             return message.reply("You don't have permission to remove a tower.");
         }
 
         if (args.length < 1) {
-            return message.reply('Please specify the location of the tower you want to remove. Usage: `!removetower [location]`');
+            return message.reply('Usage: `!removetower [home/away]`. Example: `!removetower home`');
         }
 
-        const location = args.join(' ');
-        const tower = await Tower.findOne({ location: location, channelId: message.channel.id });
+        const towerType = args[0].toLowerCase();
+        const refundAmount = towerType === 'home' ? 2000 : 0; // Refund 2000 for home towers, 0 for away towers
 
-        if (!tower) {
-            return message.reply(`No tower found at the location: "${location}".`);
+        const alliance = await Alliance.findOne({ channelId: message.channel.id });
+        if (!alliance) {
+            return message.reply("This channel is not registered as an alliance.");
         }
 
-        // Assuming the cost is stored in the tower or there's a fixed cost
-        const cost = tower.cost || 2000; // Default to 2000 if not specified
-        const refundAmount = Math.floor(cost * 0.7);
+        let clayBalance = await ClayBalance.findOne({ channelId: message.channel.id });
+        if (!clayBalance) {
+            return message.reply("No clay balance found for this alliance.");
+        }
 
-        // Update the clay balance for the channel
-        const clayBalance = await ClayBalance.findOne({ channelId: message.channel.id }) || new ClayBalance({ channelId: message.channel.id, balance: 0 });
+        // Ensure we don't exceed the daily clay earned limit by adding the refund
+        const potentialDailyClay = clayBalance.dailyClayEarned + refundAmount;
+        if (potentialDailyClay > clayBalance.dailyMaxClay) {
+            return message.reply("Refunding this tower would exceed the daily clay limit.");
+        }
+
+        // Update the clay balance and daily clay earned
         clayBalance.balance += refundAmount;
-
-        // Optional: Adjust the daily maximum clay cap
-        // This part of the logic would need to track adjustments to ensure it doesn't exceed original limits
-
+        clayBalance.dailyClayEarned += refundAmount; // Assuming we want to track refunds as part of daily earnings
         await clayBalance.save();
-        await Tower.deleteOne({ _id: tower._id });
 
-        message.reply(`Tower at "${location}" has been removed. ${refundAmount} clay has been refunded to your balance.`);
+        // Update the tower count
+        const towerUpdate = towerType === 'home' ? { $inc: { homeTowerCount: -1 } } : { $inc: { awayTowerCount: -1 } };
+        await Tower.findOneAndUpdate({ allianceId: alliance._id }, towerUpdate, { new: true });
+
+        message.reply(`A ${towerType} tower has been successfully removed by the ${alliance.allianceName} alliance. ${refundAmount} clay has been refunded to the balance. Current balance: ${clayBalance.balance} clay.`);
     },
 };

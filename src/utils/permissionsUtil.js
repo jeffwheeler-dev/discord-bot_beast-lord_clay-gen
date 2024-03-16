@@ -1,8 +1,15 @@
-const { PermissionsBitField } = require('discord.js');
+const Setting = require('../database/models/Setting'); // Ensure this path is correct
 
-const hasAdminPermissions = (message) => {
-  // Assuming 'message' is the Discord message object
-  return message.member.permissions.has(PermissionsBitField.Flags.Administrator);
+const hasModPermissions = async (message) => {
+    try {
+        const setting = await Setting.findOne({ serverID: message.guild.id });
+        if (!setting || !setting.modRoleID) return false;
+
+        return message.member.roles.cache.has(setting.modRoleID);
+    } catch (error) {
+        console.error('Error checking mod permissions:', error);
+        return false;
+    }
 };
 
-module.exports = { hasAdminPermissions };
+module.exports = { hasModPermissions };

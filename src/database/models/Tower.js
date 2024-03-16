@@ -1,3 +1,4 @@
+// src/database/models/Tower.js
 const mongoose = require('mongoose');
 
 const towerSchema = new mongoose.Schema({
