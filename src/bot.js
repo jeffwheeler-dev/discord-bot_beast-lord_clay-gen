@@ -29,7 +29,6 @@ async function startBot() {
         });
         console.log('MongoDB connected successfully.');
 
-        // Perform server checks or other startup operations here
         for (const guild of client.guilds.cache.values()) {
             try {
                 console.log(`Checking server: ${guild.name} (ID: ${guild.id})`);
@@ -64,12 +63,12 @@ client.on('messageCreate', async message => {
     const args = message.content.slice(1).trim().split(/ +/);
     const commandName = args.shift().toLowerCase();
 
-    if (!client.commands.has(commandName)) return;
-
     const command = client.commands.get(commandName);
+    if (!command) return;
 
     try {
-        await command.execute(message, args);
+        // Pass the client instance here
+        await command.execute(message, args, client);
     } catch (error) {
         console.error(error);
         message.reply('There was an error trying to execute that command!');
