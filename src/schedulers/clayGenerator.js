@@ -2,12 +2,16 @@ const cron = require('node-cron');
 const ClayBalance = require('../database/models/ClayBalance');
 const Alliance = require('../database/models/Alliance');
 const { sendNotification } = require('./notifications');
-const { client } = require('../bot'); // Ensure the client instance is imported correctly
 
 const CLAY_ADDED_PER_INTERVAL = 375;
 const DAILY_CLAY_CAPACITY = 36000;
 
-async function addClayToAllChannels() {
+async function addClayToAllChannels(client) {
+    if (!client) {
+        console.error('Client is not provided to addClayToAllChannels function');
+        return;
+    }
+
     try {
         const balances = await ClayBalance.find({});
         for (const balance of balances) {
@@ -40,7 +44,7 @@ async function addClayToAllChannels() {
 }
 
 // Schedule the job to run at precise quarter-hour marks
-cron.schedule('0,15,30,45 * * * *', addClayToAllChannels, {
+cron.schedule('0,15,30,45 * * * *', () => addClayToAllChannels(client), {
     scheduled: true,
     timezone: "UTC"
 });
